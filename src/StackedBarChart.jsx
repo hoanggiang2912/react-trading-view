@@ -1,25 +1,14 @@
 import { React } from "react";
-// import { Bar } from "react-chartjs-2";
-// import {
-//   Chart as ChartJS,
-//   BarElement,
-//   CategoryScale,
-//   LinearScale,
-//   Title,
-//   Tooltip,
-//   Legend,
-// } from "chart.js";
-
-// ChartJS.register(
-//   BarElement,
-//   CategoryScale,
-//   LinearScale,
-//   Title,
-//   Tooltip,
-//   Legend
-// );
-
 import { BarChart } from "@mui/x-charts/BarChart";
+import {
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 // const options = {
 //   scales: {
@@ -38,13 +27,25 @@ import { BarChart } from "@mui/x-charts/BarChart";
 //   },
 // };
 
-function StackedBarChart({ data, labelData }) {
-  console.log("data", data);
-  const buyData = data[0]?.data.reduce((acc, item) => acc + item, 0);
-  const sellData = data[1]?.data.reduce((acc, item) => acc + item, 0);
-  const total = buyData + sellData;
-  const buyPercent = Math.round((buyData / total) * 100 * 100) / 100;
-  const sellPercent = Math.round((sellData / total) * 100 * 100) / 100;
+function StackedBarChart({ data }) {
+  // Prepare the data for recharts
+  const buyActive = data.reduce(
+    (acc, item) => {
+      acc.data.push(item.o);
+      return acc;
+    },
+    { label: "Mua Chu Dong", data: [] }
+  );
+
+  const sellActive = data.reduce(
+    (acc, item) => {
+      acc.data.push(item.o);
+      return acc;
+    },
+    { label: "Ban Chu Dong", data: [] }
+  );
+
+  console.log("buyActive: ", buyActive);
 
   return (
     <>
@@ -52,21 +53,26 @@ function StackedBarChart({ data, labelData }) {
         Biểu đồ khớp lệnh theo bước giá
       </h1>
       <BarChart
-        title="Stacked Bar Chart"
-        yAxis={[
+        width={500}
+        height={300}
+        series={[
           {
-            scaleType: "band",
-            data: labelData,
-            categoryGapRatio: 0.3,
-            barGapRatio: 0.1,
+            ...buyActive,
+            stack: "a",
+          },
+          {
+            ...sellActive,
+            stack: "a",
           },
         ]}
-        layout="horizontal"
-        series={data}
-        height={500}
-        // barLabel={"value"}
+        margin={{
+          top: 20,
+          right: 30,
+          left: 20,
+          bottom: 5,
+        }}
       />
-      <div className="flex">
+      {/* <div className="flex">
         <div className="w-full flex gap-10">
           <div className="flex items-center">
             <div
@@ -83,7 +89,7 @@ function StackedBarChart({ data, labelData }) {
             <span className="text-sm text-slate-800">{sellPercent}%</span>
           </div>
         </div>
-      </div>
+      </div> */}
     </>
   );
 }

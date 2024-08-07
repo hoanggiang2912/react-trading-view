@@ -1,27 +1,57 @@
-import { createChart } from "lightweight-charts";
-import { useEffect } from "react";
+import { createChart, ColorType } from "lightweight-charts";
+import React, { useEffect, useRef } from "react";
 
-function Historam({ data }) {
-  const chartOptions = {
-    layout: {
-      textColor: "white",
-      background: { type: "solid", color: "black" },
-    },
-  };
+export default function Historam(props) {
+  const {
+    data,
+    colors: {
+      backgroundColor = "black",
+      lineColor = "#2962FF",
+      textColor = "white",
+      areaTopColor = "#2962FF",
+      areaBottomColor = "rgba(41, 98, 255, 0.28)",
+    } = {},
+  } = props;
+
+  const chartContainerRef = useRef();
 
   useEffect(() => {
-    const chart = createChart(
-      document.getElementById("historam"),
-      chartOptions
-    );
-    const histogramSeries = chart.addHistogramSeries({ color: "#26a69a" });
+    const handleResize = () => {
+      chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+    };
 
-    histogramSeries.setData(data);
-
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: backgroundColor },
+        textColor,
+      },
+      width: chartContainerRef.current.clientWidth,
+      height: 300,
+    });
     chart.timeScale().fitContent();
-  }, []);
 
-  return <div id="historam" className="h-[20vh] z-20 -mt-[120px]"></div>;
+    const newSeries = chart.addAreaSeries({
+      lineColor,
+      topColor: areaTopColor,
+      bottomColor: areaBottomColor,
+    });
+    newSeries.setData(data);
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+
+      chart.remove();
+    };
+  }, [
+    data,
+    backgroundColor,
+    lineColor,
+    textColor,
+    areaTopColor,
+    areaBottomColor,
+  ]);
+
+  return <div ref={chartContainerRef} />;
 }
-
-export default Historam;

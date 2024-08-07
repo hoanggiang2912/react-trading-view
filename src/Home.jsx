@@ -1,75 +1,49 @@
-const apiKey = "wBa1331PR97SOmNzwcuNwTrztfN0R3v2";
-const keyId = "8c964054-6600-450a-84e5-d857610d9eeb";
-const url_aggs = `https://api.polygon.io/v2/aggs/ticker/AAA/range/1/day/2023-01-09/2023-02-10?adjusted=true&sort=asc&apiKey=${apiKey}`;
-const url_ticker = `https://api.polygon.io/v3/reference/tickers?active=true&limit=4&apiKey=${apiKey}`;
+const iboardAPI = `https://api.allorigins.win/get?url=https://iboard-query.ssi.com.vn/v2/stock/group/VN30`;
 
 import { useEffect, useState } from "react";
 import Nav from "./Nav";
 import Spinner from "./Spinner";
+import Error from "./Error";
 
 function Home() {
-  // const [tickerData, setTickerData] = useState([]);
-  const [aggsData, setAggsData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  // console.log(tickerDataKeys);
-
-  const fetchTickerData = async () => {
-    try {
-      setIsLoading(true);
-
-      const response = await fetch(url_ticker);
-
-      const data = await response.json();
-      // setTickerData(data.results);
-      // console.log(data.results);
-      const tickers = data.results.map((item) => item.ticker);
-
-      await fetchMuiltipleAggsData(tickers);
-
-      setIsLoading(false);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const fetchMuiltipleAggsData = async (tickers) => {
-    try {
-      tickers.length > 0 &&
-        Promise.all(
-          tickers.map(async (ticker) => {
-            const response = await fetch(
-              `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/day/2023-01-09/2023-02-10?adjusted=true&sort=asc&limit=5&apiKey=${apiKey}`
-            );
-            const data = await response.json();
-            return {
-              results: data.results,
-              ticker: ticker,
-              next_url: data.next_url,
-            };
-          })
-        )
-          .then((data) => {
-            setAggsData(data);
-            console.log("data", data);
-          })
-          .catch((error) => {
-            throw new Error(error);
-          });
-    } catch (error) {
-      console.log(error);
-    }
-  };
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
-    fetchTickerData();
+    (async () => {
+      try {
+        const response = await fetch(iboardAPI);
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const data = await response.json();
+
+        const parsedData = JSON.parse(data.contents);
+        setData(parsedData.data);
+      } catch (error) {
+        setIsError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "decimal",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(num);
+  };
+
+  if (isLoading) return <Spinner />;
+  if (isError) return <Error />;
+
   return (
-    <div className="relative overflow-x-auto shadow-md sm:rounded-lg">
+    <>
       <Nav />
-
-      {isLoading && <Spinner />}
-
       <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
         <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
           <tr>
@@ -140,22 +114,6 @@ function Home() {
             >
               Giá
             </th>
-
-            <th
-              scope="col"
-              colSpan={2}
-              className="p-2 text-center border border-gray-500"
-            >
-              Dư
-            </th>
-
-            <th
-              scope="col"
-              colSpan={2}
-              className="p-2 text-center border border-gray-500"
-            >
-              ĐTNN
-            </th>
           </tr>
           <tr>
             <th scope="col" className="p-2 text-center border border-gray-500">
@@ -218,76 +176,197 @@ function Home() {
             <th scope="col" className="p-2 text-center border border-gray-500">
               Thấp
             </th>
-            {/* ---------------------------------------- */}
-            <th scope="col" className="p-2 text-center border border-gray-500">
-              Mua
-            </th>
-            <th scope="col" className="p-2 text-center border border-gray-500">
-              Bán
-            </th>
-            {/* ---------------------------------------- */}
-            <th scope="col" className="p-2 text-center border border-gray-500">
-              Mua
-            </th>
-            <th scope="col" className="p-2 text-center border border-gray-500">
-              Bán
-            </th>
           </tr>
         </thead>
         <tbody>
-          {aggsData.map(({ ticker, results, next_url }, index) => {
-            if (results && results.length > 0)
-              return results.map((item, index) => (
-                <tr
-                  className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
-                  key={index}
-                >
-                  <td className="p-2 text-center">{ticker}</td>
-                  <td className="p-2 text-center text-yellow-600">{item?.c}</td>
-                  <td className="p-2 text-center text-pink-600">{item?.h}</td>
-                  <td className="p-2 text-center text-cyan-400">{item?.l}</td>
-                  <td className="p-2 text-center">{item?.n}</td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center">{item?.o}</td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                  <td className="p-2 text-center"></td>
-                </tr>
-              ));
-
-            if (!results && !isLoading)
-              return (
-                <tr
-                  key={index}
-                  className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
-                >
-                  <td colSpan={30} className="p-2 text-center">
-                    No data
-                  </td>
-                </tr>
-              );
-          })}
+          {data.map((item, index) => (
+            <tr
+              className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 *:border-gray-500 *:border"
+              key={index}
+            >
+              <td className="p-2 text-center">{item.ss}</td>
+              <td className="p-2 text-center text-yellow-600">
+                {formatNumber(item.c)}
+              </td>
+              <td className="p-2 text-center text-pink-600">
+                {formatNumber(item.h)}
+              </td>
+              <td className="p-2 text-center text-cyan-400">
+                {formatNumber(item.f)}
+              </td>
+              <td className="p-2 text-center">{formatNumber(item.mtq)}</td>
+              <td
+                className={`p-2 text-center ${
+                  item.b3 > item.h
+                    ? "text-red-500"
+                    : item.b3 < item.h
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.b3)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.b3v === Math.max(item.b3v, item.b2v, item.b1v)
+                    ? "text-purple-500"
+                    : ""
+                }`}
+              >
+                {formatNumber(item.b3v)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.b2 > item.h
+                    ? "text-red-500"
+                    : item.b2 < item.h
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.b2)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.b2v === Math.max(item.b3v, item.b2v, item.b1v)
+                    ? "text-purple-500"
+                    : ""
+                }`}
+              >
+                {formatNumber(item.b2v)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.b1 > item.h
+                    ? "text-red-500"
+                    : item.b1 < item.h
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.b1)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.b1v === Math.max(item.b3v, item.b2v, item.b1v)
+                    ? "text-purple-500"
+                    : ""
+                }`}
+              >
+                {formatNumber(item.b1v)}
+              </td>
+              <td className="p-2 text-center">{formatNumber(item.lmp)}</td>
+              <td className="p-2 text-center">{formatNumber(item.lmv)}</td>
+              <td className="p-2 text-center">{formatNumber(item.lpcp)}%</td>
+              <td
+                className={`p-2 text-center ${
+                  item.o1 > item.h
+                    ? "text-red-500"
+                    : item.o1 < item.h
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.o1)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.o1v === Math.max(item.o1v, item.o2v, item.o3v)
+                    ? "text-purple-500"
+                    : ""
+                }`}
+              >
+                {formatNumber(item.o1v)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.o2 > item.h
+                    ? "text-red-500"
+                    : item.o2 < item.h
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.o2)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.o2v === Math.max(item.o1v, item.o2v, item.o3v)
+                    ? "text-purple-500"
+                    : ""
+                }`}
+              >
+                {formatNumber(item.o2v)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.o3 > item.h
+                    ? "text-red-500"
+                    : item.o3 < item.h
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.o3)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.o3v === Math.max(item.o1v, item.o2v, item.o3v)
+                    ? "text-purple-500"
+                    : ""
+                }`}
+              >
+                {formatNumber(item.o3v)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.pc < item.previousPc
+                    ? "text-red-500"
+                    : item.pc > item.previousPc
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.pc)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.ap < item.previousAp
+                    ? "text-red-500"
+                    : item.ap > item.previousAp
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.ap)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.o < item.previousO
+                    ? "text-red-500"
+                    : item.o > item.previousO
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.o)}
+              </td>
+              <td
+                className={`p-2 text-center ${
+                  item.l < item.previousL
+                    ? "text-red-500"
+                    : item.l > item.previousL
+                    ? "text-green-500"
+                    : "text-yellow-500"
+                }`}
+              >
+                {formatNumber(item.l)}
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }
 

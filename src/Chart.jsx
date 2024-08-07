@@ -5,153 +5,67 @@ import Error from "./Error";
 import Nav from "./Nav";
 import Historam from "./Historam";
 import StackedBarChart from "./StackedBarChart";
+import CandleStick from "./TradingViewWidget";
+import TradingViewWidget from "./TradingViewWidget";
+const iboardAPI = `https://api.allorigins.win/get?url=https://iboard-query.ssi.com.vn/v2/stock/group/VN30`;
 
-const ticker = "AAPL";
-const url_aggs = `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/day/2023-01-09/2023-02-10?adjusted=true&sort=asc&apiKey=wBa1331PR97SOmNzwcuNwTrztfN0R3v2`;
+const calculateAverageVolume = (data) => {
+  const last10Volumes = data.slice(0, 10).map((item) => item.lv);
+  const totalVolume = last10Volumes.reduce((acc, volume) => acc + volume, 0);
+  return totalVolume / last10Volumes.length;
+};
 
-// const alphaVatageAPIKey = "86M5HILFXH6ZJC3C";
-// const alphaVatageSymbol = "AAPL";
+const calculatePercentage = (totalVolume, avgVolume10Days) => {
+  if (avgVolume10Days === 0) return 0; // Avoid division by zero
+  return ((totalVolume / avgVolume10Days) * 100).toFixed(2);
+};
 
 function Chart() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [error, setError] = useState(null);
-  const [tradeData, setTradeData] = useState([]);
-  const [labelData, setLabelData] = useState([]);
-  const [result, setResult] = useState([]);
-  const [volumnData, setVolumnData] = useState([]);
+  const [data, setData] = useState([]);
 
-  const chartOptions = {
-    layout: {
-      textColor: "white",
-      background: { type: "solid", color: "black" },
-    },
-    responsive: true,
-    maintainAspectRatio: false,
-  };
+  const totalVolume = data.reduce((acc, item) => acc + item.lv, 0);
+  const avgVolume10Days = calculateAverageVolume(data);
+  const percentage = calculatePercentage(totalVolume, avgVolume10Days);
+  const tradeData = data.map((item) => ({ r: item.r, o: item.o }));
 
   useEffect(() => {
-    async function fetchData() {
+    const fetchData = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const res = await fetch(url_aggs);
+        const response = await fetch(iboardAPI);
+        const result = await response.json();
+        console.log("result: ", result);
 
-        if (!res.ok) {
-          throw new Error("Network response was not ok");
-        }
-        const data = await res.json();
-        // console.log(data);
-
-        if (!data || !data.results) throw new Error("No data found");
-
-        console.log(data.results);
-        setResult(data.results);
-
-        // handle volumn chart
-        const volumnData = data.results.map((result, index) => ({
-          value: result.v,
-          time: result.t + index,
-          color: result.v > data.results[index - 1]?.v ? "#26a69a" : "#ef5350",
-        }));
-        console.log("volumn data", volumnData);
-        setVolumnData(volumnData);
-
-        // handle bar chart data
-        const o = data.results.map((result, index) => result.o);
-        const h = data.results.map((result, index) => result.h);
-
-        const oh = [o, h];
-
-        const tradeData = oh.map((item, index) => ({
-          label: index === 0 ? "Mua chủ động" : "Bán chủ động",
-          data: item,
-          stack: index % 2 === 0 ? "a" : "b",
-          color: index === 0 ? "#26a69a" : "#ef5350",
-        }));
-
-        setTradeData(tradeData);
-
-        // console.log(data.results);
-
-        const labelData = data.results
-          .map((result, index) => result.vw)
-          .toSorted((a, b) => b - a);
-        setLabelData(labelData);
-
-        // handle area chart
-        const areaChart = createChart(
-          document.getElementById("secondContainer"),
-          chartOptions
-        );
-
-        const areaSeries = areaChart.addAreaSeries({
-          lineColor: "#2962FF",
-          topColor: "#2962FF",
-          bottomColor: "rgba(41, 98, 255, 0.28)",
-          background: "rgba(41, 98, 255, 0.1)",
-        });
-
-        const areaSeriesData = data.results.map((result, index) => ({
-          time: result.t + index,
-          value: result.v,
-        }));
-
-        areaSeries.setData(areaSeriesData);
-        areaChart.timeScale().fitContent();
-
-        // handle candlestick chart
-        const candlestickChart = createChart(
-          document.getElementById("firstContainer"),
-          chartOptions
-        );
-
-        const candlestickSeriesData = data.results
-          .map((result, index) => ({
-            time: result.t + index,
-            open: result.o,
-            high: result.h,
-            low: result.l,
-            close: result.c,
-          }))
-          .toSorted((a, b) => a.time - b.time);
-
-        console.log("candlestick series data: ", candlestickSeriesData);
-
-        const candlestickSeries = candlestickChart.addCandlestickSeries({
-          upColor: "#26a69a",
-          downColor: "#ef5350",
-          borderVisible: false,
-          wickUpColor: "#26a69a",
-          wickDownColor: "#ef5350",
-        });
-
-        candlestickSeries.setData(candlestickSeriesData);
-
-        candlestickChart.timeScale().fitContent();
-
-        setIsLoading(false);
-        setIsError(false);
+        const data = JSON.parse(result.contents);
+        console.log("data: ", data);
+        setData(data.data);
       } catch (error) {
         setIsError(true);
+      } finally {
         setIsLoading(false);
-        setError(error);
       }
-    }
-
+    };
     fetchData();
+
+    return () => {
+      setIsLoading(false);
+      setIsError(false);
+    };
   }, []);
 
+  if (isLoading) return <Spinner />;
+  if (isError) return <Error />;
   return (
     <>
-      {isLoading && <Spinner />}
-      {isError && <Error errorMessage={error} />}
       <Nav />
-      <table className="w-full">
+      <table className="w-full mb-5">
         <thead>
           <tr>
             <th className="p-2 bg-gray-600">Ngành</th>
             <th className="p-2 bg-gray-600">Tổng KL</th>
-            <th className="p-2 bg-gray-600">! KL / KLTB 10 phiên</th>
+            <th className="p-2 bg-gray-600">%KL / KLTB 10 phiên</th>
             <th className="p-2 bg-gray-600">Tổng GT</th>
             <th className="p-2 bg-gray-600">Sàn</th>
             <th className="p-2 bg-gray-600">TC</th>
@@ -169,36 +83,23 @@ function Chart() {
         </thead>
         <tbody>
           <tr>
-            <td className="p-2 text-center bg-gray-600">{ticker}</td>
+            <td className="p-2 text-center bg-gray-600">Bất động sản</td>
+            <td className="p-2 text-center bg-gray-600">{totalVolume}</td>
+            <td className="p-2 text-center bg-gray-600">{percentage}%</td>
             <td className="p-2 text-center bg-gray-600">
-              {result.reduce((a, c) => (a += c.v), 0)}
-            </td>
-            <td className="p-2 text-center bg-gray-600">
-              {Math.round(
-                (result.slice(0, 10).reduce((a, c) => (a += c.v), 0) /
-                  result.reduce((a, c) => (a += c.v), 0)) *
-                  100
-              )}
-              %
-            </td>
-            <td className="p-2 text-center bg-gray-600">
-              {Math.round(
-                result
-                  .map((item) => item.v * item.c)
-                  .reduce((a, c) => (a += c), 0)
-              )}
+              {data[data.length - 1]?.l}
             </td>
             <td className="p-2 text-center text-cyan-500 bg-gray-600">
-              {result[result.length - 1]?.l}
+              {data[data.length - 1]?.c}
             </td>
             <td className="p-2 text-center text-yellow-400 bg-gray-600">
-              {result[result.length - 1]?.o}
+              {data[data.length - 1]?.mp}
             </td>
             <td className="p-2 text-center text-pink-500 bg-gray-600">
-              {result[result.length - 1]?.h}
+              {data[data.length - 1]?.pc}
             </td>
             <td className="p-2 text-center bg-gray-600">
-              {result[result.length - 1]?.vw}
+              {data[data.length - 1]?.cp}
             </td>
             <td className="p-2 text-center bg-gray-600">{`...`}</td>
             <td className="p-2 text-center bg-gray-600">{`...`}</td>
@@ -211,11 +112,9 @@ function Chart() {
           </tr>
         </tbody>
       </table>
-      <div className="flex gap-5 p-5">
+      <div className="flex gap-5">
         <div className="w-2/4">
-          <div id="firstContainer" className="h-[40vh]"></div>
-          <div id="secondContainer" className="h-[20vh] relative z-50"></div>
-          <Historam data={volumnData} />
+          <TradingViewWidget />
         </div>
         <div
           id="thirdContainer"
@@ -232,16 +131,16 @@ function Chart() {
               <th className="p-4">Giá mua</th>
             </thead>
             <tbody>
-              {result.flat().map((item, index) => (
+              {data.flat().map((item, index) => (
                 <tr className="" key={index}>
-                  <td className="p-2 text-center">{item.n}</td>
-                  <td className="p-2 text-center">{item.o}</td>
+                  <td className="p-2 text-center">{item.mv}</td>
+                  <td className="p-2 text-center">{item.r}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="bg-white rounded-lg p-2 w-1/2">
-            <StackedBarChart data={tradeData} labelData={labelData} />
+          <div className="bg-slate-600 rounded-lg p-2 w-1/2">
+            <StackedBarChart data={tradeData} />
           </div>
         </div>
       </div>
